@@ -31,6 +31,7 @@ security:
 systemLog:
   path: /var/mongodb/logs/mongod.log
   destination: file
+  logAppend: true
 processManagement:
   fork: true  //mongod process will run in the background
   
@@ -207,6 +208,40 @@ mongo --port 27000 --username root --password root --authenticationDatabase admi
 	
 * mongoimport - import the JSON/csv representation of mongodb
 	mongoimport --port 30000 --username "m103-application-user" --password "m103-application-pass" --authenticationDatabase admin --db applicationData --collection products products.json
+	
+	
+	
+##Replication
+- MongoDB uses Async Statement-Based Replication. Hence, plateform independent.
+- Other than PRIMARY and SECONDARY nodes in a replica set, we can also have "ARBITER" node..which holds NO Data, can vote in an election (can serve for ti breaker), cannot become primary ARBITER node will have priority 0.
+- Raft is a protocol for implementing distributed consensus.
+- Default MongoDB asynchronous replication works on PV1 (Protocal Version 1)
+- We should always have ODD number of nodes in a replica set
+- Any change in any node configuration is called topology change.
+- Replica set can have upto 50 nodes...only max 7 nodes are voting members
+- Secondary node can be defined as HIDDEN node..which can have data which is hidden from application. A hidden node will have PRIORITY 0.
+- Can be also a DELAYED node
+
+
+- To enabled replica set, Add below in mongod.conf file
+security:
+  keyFile: /var/mongodb/pki/m103-keyFile
+replication:
+  replSetName: m103-example    //mongo shell option for this --replSet
+  
+- Generate keyFile
+openssl rand -base64 741 > /var/mongodb/pki/m103-keyFile
+- Add chmod 600 /var/mongodb/pki/m103-keyFile
+- 
+##Replica Set Commands
+* rs.initiate() -- To initiate replica set
+* rs.status()  	-- Reports health on replica set nodes..get data from heartbeats
+* rs.add("localhost:27001") -- To add new node to replica set
+* rs.isMaster()			-- Describes a node's role in replica set
+* rs.setDown() 			-- To force an election by setting down from current primary 
+* db.serverStatus()['repl'] -- Section of the db.serverStatus() output
+* rs.printReplicationInfo() -- Only returns oplog data relative to current node. Contains timestamps for the first and last oplog events.
+
 
 mongo "mongodb+srv://sandbox-2mtgq.mongodb.net/test" --username m001-student  --password m001-mongodb-basics
 
