@@ -544,7 +544,7 @@ db.movies.aggregate([
 ##Cursor like stages
 * $limit: {integer}
 * $skip: {integer}
-* $count: {<name we want the count to be called>}
+* $count: <name we want the count to be called>
 * $sort: {<field on which we want to sort on>, <integer, direction to sort .. -1 mean desc, 1 means 1>}
  
 * $sort take advantage of indexes if used early withing a pipeline
@@ -552,6 +552,665 @@ db.movies.aggregate([
 
 ##$sample
 * Select a set of random documents from a collection
+* {$sample: {size : <N, how many documents}}
+When N<=5% of number of documents in source collections AND
+Source collection has >=100 documents AND
+$sample is the first stage
+
+##$arrayElemAt:
+
+```
+db.movies.aggregate([
+	{
+		$match: {
+			awards: {$exists: true},
+			awards: {$regex: /^Won .*/}
+		}
+	},
+	{
+		$project: {
+			_id:0,
+			title:1,
+			oscar:{ $arrayElemAt: [{$split: ["$awards", " "]}, 0]},
+		}
+	
+	}
+]);
+```
+
+##$group stage
+```
+{
+	$group: 
+		{
+			_id : <matching/grouping criteria>,
+			fieldName: <accumulator expression>,
+			.. <as many as fieldName as required>
+		
+		}
+}
+```
+
+* Example: here, each time group categories based on year, the sum expression is called
+```
+{
+	$group: {
+			_id: "$year",
+			num_films_in_year: {$sum: 1}
+
+	}	
+}
+```
+* To group all documents, assign _id to null
+```
+{
+	$group: {
+			_id: null,
+			count: {$sum: 1}
+
+	}	
+}
+```
+* $group can be used multiple times in a pipeline
+
+```
+db.movies.aggregate([
+  {
+    $match: {
+      awards: /Won \d{1,2} Oscars?/
+    }
+  },
+  {
+    $group: {
+      _id: null,
+      highest_rating: { $max: "$imdb.rating" },
+      lowest_rating: { $min: "$imdb.rating" },
+      average_rating: { $avg: "$imdb.rating" },
+      deviation: { $stdDevSamp: "$imdb.rating" }
+    }
+  }
+])
+```
+
+##Accumulator expressions with $project 
+
+* Available accumulator expression in project : $sum, $avg, $max, $min, $stdDevPop (Standard Diviation Population), $stdDevSam (Standard Divition Sample)
+* Within $project, expressions have no memory between documents
+* May still have to use $reduce or $map for complex calculations
+
+$$this refers to current value of array
+$$value refers to current accumulator value
+
+
+
+##$unwind stage
+* $unwind stage is used to unwind a array field
+* $unwind has 2 forms
+	* Short Form
+		```
+			$unwind: <field path>
+		```
+	* Long Form
+		```
+			$unwind:{
+					path: <field path>,
+					includeArrayIndex: <string>,
+					preserveNullAndEmptyArrays: <boolean>
+				}
+		```
+
+* $unwind may cause peformance issue on large collections
+
+
+##Bulk Write:
+* Bulk writes allows MongoDB clients to send multiple writes together
+* Bulk Writes can be ordered or unordered. 
+* Default is "Ordered". In case of ordered, executes writes sequentially and will end execution after first write failure.
+
+##Connection Pooling
+* Connection pools allow for reuse of connections
+* Subsequent requests appear faster to client
+* Default connection pool size in MongoDB is 100.
+* Always use connection pooling
+
+
+##Connection Configuration
+* Always try to set wtimeout with writeConcern majority. E.g.
+{w: "majority", wtimeout: 5000}
+
+* Always configure for and handle serverSelectionTimeout errors.
+
+##Final Exam
+* skip will always be executed before limit. Even if their order is different
+```
+db.movies.aggregate([
+{
+	$match: {
+		languages: "English",
+		cast: {$elemMatch: {$exists: true}},
+		"imdb.rating": {$gte: 0}
+	}
+},
+{
+	$unwind: "$cast" 
+},
+{
+	$group: {
+		_id: "$cast",
+		num_of_movies: {$sum:1},
+		avarage: {$avg: "$imdb.rating"}
+	}
+},
+{
+	$sort: {num_of_movies: -1}
+},
+{
+	$limit:1
+}
+]);
+```
+
+##$lookup stage
+* It is similar to join operation in relational database
+* Syntax
+	$lookup:{
+		from: <collection to join>,
+		localField: <field from the input document>,
+		foreignField: <field from the documents of the "from" collection>,
+		as: <output array field>
+	}
+	
+* Here, the "from" collection cannot be sharded
+* The "from" collection must be in the same datbase
+* The values in "localField" and "foreignField" are matched on equality.
+* "as" can be any name, but if it exists in the working document, that will be overwritten
+
+```
+db.air_routes.aggregate([
+	{
+		$match: {
+			airplane: {$in: ["747", "380"]}
+		}
+	},
+    {
+      "$lookup": {
+        "from": "air_alliances",
+        "localField": "airline.name",
+        "foreignField": "airlines",
+        "as": "alliance"
+      }
+    },
+	{
+		$unwind: "$alliance"
+	},
+	{
+		$group:{
+			_id: "$alliance.name",
+			num_of_routes: {$sum:1}
+		}	
+	
+	},
+	{
+		$sort: {	num_of_routes: -1}
+	
+	}
+  ]);
+```
+
+##$groupLookup 
+* $groupLookup provides MongoDb a trasitive closure implementation
+* $groupLookup provides MongoDB a graph or a graph-like capability
+* Syntax
+```
+	{
+		$groupLookup: {
+			from: <lookup table>,
+			startWith: <expression for value to start from>,
+			connectFromField: <field name to connect from>,
+			connectToField: <field name to connect to>,
+			as: <field name for result array>,
+			maxDepth: <optional - max number for recurrasive depth>,
+			depthField: <optional - field name for number of iterations to reach this node>,
+			restrictSerchWithMatch: <optional - match condition to apply to lookup>
+		}
+		
+	}
+```
+
+* connectToField will be used on recursive find operation
+* connectFromField value will be used to match connectToField in a recursive match
+* depthField determines a field in the result document, which specifies the number of recursive lookups needed to reach that document
+* maxDepth allows you to specify the number of recursive lookups
+* from collection cannot be sharded
+* memory allocation $allowDiskUsage
+
+#Facet
+* Introduced in MongoDB 3.4
+* Single query facets are supported by the new aggregation pipeline stage $sortByCount.
+* As like any other aggregation pipelines, except for $out, we can use the output of this stage, as input for downstream stages and operators, manipulating the dataset accordingly.
+```
+[
+  {"$match": { "$text": {"$search": "network"}}},
+  {"$sortByCount": "$offices.city"}
+]
+```
+* $sortByCount is equivalent to a group stage to count occurance, and then sorting in desending order
+* Example:
+
+```
+	{
+		$group: {
+			_id: "$imdb.rating",
+			count: {$sum:1}
+		}
+	},
+	{
+		$sort: {
+			count: -1
+		}
+	}
+```
+
+is equivalent to
+```
+	{
+		$sortByCount: {"$imdb.rating"}
+	}
+```
+
+##Facet Bucket ($bucket stage)
+* When we want returned values in ranges
+* We must always specify at least 2 values in boundaries
+* boundaries must all be of the same general type (String, Numeric)
+* **count** is inserted by default with no **output**, but removed when output is specified
+* Syntax:
+
+```
+	db.companies.aggregate([
+		{
+			$match: {
+						founded_year: {$gt: 1990},
+						number_of_employees: {$ne: null} //This is not required if we are using default in $bucket.
+					}
+		},
+		{
+			$bucket: {
+						groupBy: "$number_of_employees",
+						boundaries: [0, 20, 50, 100, 500, 1000, Infinity], //data type must be the same for all
+						default: "Other", //When a document cannot be categoried in any of the above buckets, it will come 	//here.
+						output: {
+									total: {$sum: 1},
+									avarage: {$avg: "$number_of_employees"},
+									categories: {$addToSet: "$category_code"}
+								} //output is optional, it is used to add additional output
+					}
+		}
+	]);
+```
+
+
+##Automatic Buckets ($bucketAuto stage)
+* Given a number of buckets, try to distribute documents evenly accross buckets.
+* Cardinality of groupBy may impact even distribution and number of buckets
+* Syntax
+```
+	[
+	{
+		$match: {
+			"offices.city": "New York"
+		}
+	},
+	{
+		$bucketAuto: {
+			"groupBy" : "$founded_year",
+			"buckets: 5,
+			"output": {
+				total: {$sum: 1},
+				average: {$avg: "number_of_employees"}
+			}
+		}
+	}
+	]
+```
+* With $bucketAuto stage, we also have an option called "granularity" which has predefined values and help in bucketing the values
+* adhere bucket boundaries to a numerical series set by the granularity option.
+* Specifying granularity requies the expression to groupBy to resolve to a numeric value
+
+##Multiple Facets using $facet stage
+* The $facet stage allows several sub-pipelines to be executed to produce multiple facets.
+* The $facet stage allows the application to generate several different facets with one single database request
+* The output of the individual $facet sub-pipelines are not shared. That means all the sub-pipelines get the same copy of data
+* Syntax
+```
+db.companies.aggregate([
+	{
+		$match: {"text" : { $search: "Database"}}
+	},
+	{
+		$facet: 
+		{
+			"Categories" : [ $sortByCount : "$category_code"],
+			"Employees": [
+				{
+					$match: {founded_year: {$gt: 1980}}
+				},
+				{
+					$bucket: {
+								groupBy: "$number_of_employees",
+								boundaries: [0, 20, 50, 100, 500, 1000, Infinity],
+								default: "Other"
+							}
+				}
+			],
+			"Founded": [
+				{
+					$match: {"offices.city": "New York"},
+				},
+				{
+					$bucketAuto: {
+									groupBy: "$founded_year",
+									buckets: 5
+								}
+				}
+			]
+		}
+	}
+]);
+```
+
+* Another example
+```
+db.movies.aggregate([
+  {
+    $match: {
+      metacritic: { $gte: 0 },
+      "imdb.rating": { $gte: 0 }
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      metacritic: 1,
+      imdb: 1,
+      title: 1
+    }
+  },
+  {
+    $facet: {
+      top_metacritic: [
+        {
+          $sort: {
+            metacritic: -1,
+            title: 1
+          }
+        },
+        {
+          $limit: 10
+        },
+        {
+          $project: {
+            title: 1
+          }
+        }
+      ],
+      top_imdb: [
+        {
+          $sort: {
+            "imdb.rating": -1,
+            title: 1
+          }
+        },
+        {
+          $limit: 10
+        },
+        {
+          $project: {
+            title: 1
+          }
+        }
+      ]
+    }
+  },
+  {
+    $project: {
+      movies_in_both: {
+        $setIntersection: ["$top_metacritic", "$top_imdb"]
+      }
+    }
+  }
+])
+```
+
+
+##$redact stage 
+
+* Protect the information from unauthorized access
+* $redact has following forms
+```
+ {$redact: <expressions>}
+```
+* Here expression can be any expression or combination of expressions which ultimately results one of the below values
+
+**$$DESCEND** - Retain the fields at current document level being evaluated except sub-documents
+**$$PRUNE**   - Remove all the fields at current document level without further inception
+**$$KEEP** 	  - Retail all the fields at current document level without further inception
+
+* Field must be present in all the level of documents
+* $$KEEP and $$PRUNE automatically apply to all levels below the evaluated level
+* $$DESCEND retains current level and evaluates the next level
+* $redact is not for restricting access to a collection
+
+* Example
+```
+// creating a variable to refer against
+var userAccess = "Management"
+
+// comparing whether the value/s in the userAccess variable are in the array
+// referenced by the $acl field path
+db.employees
+  .aggregate([
+    {
+      "$redact": {
+        "$cond": [{ "$in": [userAccess, "$acl"] }, "$$DESCEND", "$$PRUNE"]
+      }
+    }
+  ])
+  .pretty()
+
+``` 
+
+##$out stage
+* Will create a new collection or overwrite the existing collection if specified
+* Honors indexes on existing collections
+* Will not create or overwrite data if pipeline errors.
+* Creates collection in the same database as the source collection.
+* $out stage must be the last stage of a pipeline
+
+* Syntax
+```
+db.collection.aggregate([ {stage1}, {stage2}...{stageN}, {$out: "new_collection"}]);
+```
+
+* $out cannot be used within a facet
+* new_collection must be unsharded
+
+
+##$merge stage
+* Introduced in MongoDB 4.2
+* Like $out stage, $merge stage must also be the last stage of the pipeline
+* Unlike $out stage, $merge stage has below properties
+  * new_collection can exist
+  * same or different DB
+  * can be sharded
+
+* Syntax:
+```
+{
+	$merge: {
+		into : <target>,
+		on: <fields> //Optional field. It is the matching field during merge. Default value is _id field. Must 	//have unique index present on this field.
+	}
+}
+```
+
+* Example1: Simply specify the collection name of the current database
+```
+{
+	$merge: {
+		into : "collection"
+	}
+}
+```
+
+* Example2: specify the collection name and database
+```
+{
+	$merge: {
+		into : {db: "db2", coll: "collection2"}
+	}
+}
+```
+
+* Syntax:
+```
+{
+	$merge: {
+		into : <target>,
+		whenNotMatched: <Optional. Default value: "insert". Other values "discard" and "fail"
+		whenMatch: <Optional. Default value: "merge". Other values "replace", "keepExisting", "fail", [...]
+					//here [...] can be custom implementation
+	}
+}
+
+
+```
+
+#Views
+* MongoDB provides non-materized views that means the view is computed everytime a read operation is performed against that view
+* Views contain no data themselves. They are created on demand and reflects data in the source collection.
+* Views are read-only. Write operations to view will error.
+* From user perspective, views are perceived as collections but Views have some restrictions like:
+* No Write Operation, No Index Operations (create, update), No renaming, Collation restrictions, No mapReduce, No $text, No geoNear or $geoNear
+* find() operations with following projection operators are not permitted.
+   * $, $elemMatch, $slice, $meta
+   
+* View definitions are public. 
+* AVoid referring to sensitive fields within the pipeline that defines a view.
+
+* Horizontal slicing is performed with the $match stage, reducing the number of documents that are returned.
+* Vertical slicing is performed with a $project stage or other shaping stage, modifying individual documents.
+
+* View syntax
+```
+	db.createView(<view_name>, <source_collection>, <pipeline>, <collation>)l
+```
+
+##$merge Single View Example
+```
+//$merge updates fields from mflix.users collection into sv.users collection. Our "_id" field is unique username.
+//here, db is mflix db.
+
+db.users.aggregate([
+	{
+		$project: {
+				"_id": "$username",
+				"mflix": "$$ROOT"
+		}
+	},
+	{
+		$merge: {
+			"into" : {"db": "sv", "collection": "users"},
+			"whenNotMatched": "discard"
+		
+		}
+	}
+
+]);
+
+
+```
+
+
+#Aggregation Performance
+
+* Index usage. In a aggregation pipeline, if a stage doesn't usage index then further stages make NO use of index.
+* When $limit and $sort are close together a very performant top-k sort can be performed
+* Use db.collection.aggregate([{pipeline}],{explain: true});
+* Transforming data in a pipeline stage prevents us from using indexes in the stages that follow
+
+
+* Memory Constraints
+* Results are subject to 16MB document limit. 
+	* To mitigate this, use $limit and $project stages
+
+* 100MB of RAM per stage
+	* To mitigate this, use indexes and as a last resort, use allowDiskUse like
+	db.orders.aggregate([...], {allowDiskUse: true});
+	
+* Below operators cause a merge stage on the primary shard for a database
+	* $out
+	* $facet
+	* $lookup
+	* $graphLookup
+	
+* The Aggregation Framework will automatically reorder stages in certain conditions
+
+* Avoid unneccesary stages, the Aggregation Framework can project fields automatically if final shape of the output document can be determined from initial input.
+
+* Use accumulator expressions, $map , $reduce and $filter in project before $unwind, if possible.
+* Every high order array function can be implemented with $reduce if the provided expressions do not meet your needs. 
+
+* Causing a merge in a sharded deployment will cause all subsequent pipeline stages to be performed in the same location as the merge
+
+* The query in a $match stage can be entirely covered by an index
+
+#Final Exam:
+* geoNear needs to be the first stage of our pipeline
+* $out is required to be the last stage of the pipeline
+* $indexStats must be the first stage in a pipeline and may not be used within a $facet
+* you cannot use an accumulator expression in a $match stage.
+e.g. db.collection.aggregate([{"$match": { "a" : {"$sum": 1}  }}]);
+* can not nest a $facet stage as a sub-pipeline.
+* 
+
+
+#M220J
+* MongoDB URI
+mongodb+srv://username:password@hostname/database
+
+* Use below mongodb driver library
+```
+<dependency>
+	<groupId>org.mongodb</groupId>
+	<artifactId>mongodb-driver-sync</artifactId>
+</dependency>
+```
+
+* MongoDB Driver Base Classes
+```
+MongoClient mongoClient; //Base connection class that handles the configuration and establish the connection between cluster and application.  
+MongoDatabase mongoDatabase;
+MongoCollection collection;
+Document document;
+Bson bson;
+```
+
+* By default the Java driver will set a batchSize of 0. Which means the driver will use the server defined batchSize, which by default is 101 documents. However, you can define your own batchSize for a find operation.
+ ```
+	sortableCollection.find().batchSize(10);
+ ```
+ 
+* Cursor methods (sort, limit, skip, batchSize) have equivalent aggregation stages
+* The order by which the cursor methods are appended to the find iterable does not impact the results
+* But the order by which aggregation stages are defined in the pipeline does!
+
+
+##Write operations
+* doc.append() and doc.put() do the basically the same thing but put method will replace a key if that is already existing.
+
+* Though collection.insertOne(doc) method returns void if all goes well but if there is an error will inserting, it will return MongoWriteException. 
+
+*
 -------------
 
 mongo "mongodb+srv://sandbox-2mtgq.mongodb.net/test" --username m001-student  --password m001-mongodb-basics
