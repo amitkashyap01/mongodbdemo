@@ -37,9 +37,6 @@ systemLog:
   logAppend: true
 processManagement:
   fork: true  //mongod process will run in the background
-  
-
-
 
 
 
@@ -1210,7 +1207,566 @@ Bson bson;
 
 * Though collection.insertOne(doc) method returns void if all goes well but if there is an error will inserting, it will return MongoWriteException. 
 
-*
+
+
+#M201
+## Hardware considerations and configurations
+
+* Below MongoDB data management operations make use of memory resource
+	* Aggregation
+	* Index traversing
+	* Write Operations
+	* Query Engine
+	* Connections
+
+* Below MongoDB operations (but not limited to) make use of CPU resource
+	* Page Compression
+	* Data Calculation
+	* Aggregation Framework Operations
+	* Map Reduce
+
+* Disk RAID architecture can impact the performance of your MongoDB deployment.
+* The recommened RAID architecture for MongoDB deployment is "RAID 10"
+* MongoDB **discourage** RAID 5 and RAID 6 since these do not provide sufficient performance to mongodb deployment.
+
+* CPU availability impacts the performance of MongoDB, especially if using the WiredTiger storage engine.
+
+
+##Indexes
+* Indexes are used to increase the speed of our queries. Indexes reduce the number of documents MongoDB needs to examine to satisfy a query.
+* The _id field is automatically indexed on all collections.
+* In MongoDB, indexes are maintained in BTree data structure
+* There can be index overhead for write operation performance i.e. Indexes can decrease write, update, and delete performance.
+ e.g. if we insert a new document in a collection, the collection indexs might need to be updated.
+
+
+
+##How data stored on disk?
+
+* MongoDB uses storage engine to store data on disk. There are multiple types of storage engine e.g. MMAPv1, Wired Tiger, Other etc.
+
+* WiredTiger creates separate file for each collection and each indexes under dbpath (default /data/db)
+* mongod --dbpath /data/db --fork --logpath /data/db/mongod.log --directoryperdb
+
+Here, option directoryperdb will create separate directory for each database which will contains collection and index files.
+
+* If we use --wiredTigerDirectoryForIndexes in above command, a separate directory will be created for collection and indexes under db directory
+* journal folder cotains data which comes helpful in recovering from failure and syncing the data
+
+
+
+##Single Field Index
+* db.<collection>.createIndex({<field>: <direction>});
+
+* Key Features:
+	* Keys from only one field.
+	* Can find a single value for the indexed field
+	* Can find a range of values
+	* Can use dot notation to index fields in subdocuments
+	* Can be used to find several distinct values in a single query
+	
+## explain() method
+* It can tell
+	* Is your query using the index you expect?
+	* Is your query using an index to provide a sort?
+	* Is your query using an index to provide the projection?
+	* How selective is your index?
+	* Which part of your plan is most expensive?
+
+* Execution Time
+* Numbers of keys read, documents read and documents returned
+* Plan selected and rejected
+* All the different stages the query needs to go through with details about the time it takes, the number of documents processed and returned to the next stage in the pipeline
+* If a sort was performed by walking the index or done in memory
+* The index used by the chosen plan	
+	
+* db.movies.find({title: "Something}).explain(); or db.movies.find({title: "Something}).explain("queryPlanner"); --default one
+* It can be written as exp= db.movies.explain("queryPlanner"); // this doesn;t execute the command
+* exp= db.movies.explain("executionStats");  	// this executes the command
+* exp= db.movies.explain("allPlansExecution"); //Most verbose ...this executes the command
+
+
+##Sorting with Indexes
+* 2ways a sorting can happen
+	* In memory (by default 32mb memory used)
+	* Using indexes
+
+* Initial ordering of indexes doesn't matter while sorting by index. If the index was created with ascending order, and we are sorting using this index in ascending order, the direction will be forward otherwise backward.
+
+
+
+
+##Compound Indexes
+* The index which contains 2 or more fields
+* Compound indexes can be thought as ordered list 
+* Field(s) which come first are more useful in many ways
+
+
+##Index Prefixes
+* For a query on multiple fields that overlap with the index, identify which fields in the query can use the index
+* For example, for compound index {"item":1, "location":1, "stock":1}, prefixes can be
+	* {"item":1}
+	* {"item":1, "location":1}
+	
+* So, if we have compound index, MongoDB can use this index while serving a query which has its index prefix.
+
+#Sort with index
+
+* We can use sort queries by using index prefixes in our sort predicates
+* We can filter and sort our queries by splitting up our index prefix between the query and sort predicates. Query part must preceed the sort part, and query must have equality filter.
+
+* We can sort our documents with an index if our sort predicates inverts our index keys or their prefixes.
+
+* Index prefixes can be used in query predicates to increase index utilization.
+* Index prefixes can be used in sort predicates to prevent in-memory sorts.
+* We can invert the keys of an index in our sort predicate to utilize an index by walking it backwards.
+
+
+##Multikey Index
+* Multikey index is a index which contains a array field.
+* Multikey index cann't contain all the fields as array fields. One of the field needs to a non-array field.
+* Each entry in array, server will create a separate index key
+* We can also create index on nexted document
+	* Eg. db.products.createIndex({"stock.quantity": 1});
+* Where stock is array of documents and one of the field in the document is quantity
+
+##Partial Index
+* Partial index is used to index a subset of documents of a collection. Partial indexes can be used to reduce the number of keys in an index.
+* It reduces the performance cost of creating and maintaining indexes for all the documents. Also, it will consume less memory.
+* We need to provide a condition or query predicate while creating the index
+
+```
+E.g. db.restaurants.createIndex(
+		{"address.city": 1, cuisine: 1},
+		{"partialFilterExpression": {"stars" : {"$gte": 3.5}}}
+	);
+```
+* For MongoDB to use this index, we must provide query predicate while query as welll.
+
+
+* We can also use sparse option which will help us to create index only when the field is present or exists. Rather than creating a index with null value.
+```
+E.g. db.restaurants.createIndex(
+		{"stars" : 1},
+		{"sparse": true}
+	);
+```
+* Partial indexes represent a superset of the functionality of sparse indexes.
+* Same can be achieved using partialFilterExpression as well 
+```
+E.g. db.restaurants.createIndex(
+		{"stars" : 1},
+		{"partialFilterExpression": {"stars": {"$exists": true}}} // we can use any other field as well here.
+	);
+```
+* Recommendation is to use partial index over sparse indexes
+
+* Partial indexes support compound indexes.
+
+##Partial Index Restrictions
+* We cannot specify both partialFilterExpression and sparse options together
+* _id indexes cannot be partial indexes
+* Shard key indexes cannot be partial indexes
+
+
+##Text indexes
+* There are fields in a document which contain text and our query may be to search any text of this field.
+* On this type of field, we can create a text index (instead of ascending or desending)
+```
+	E.g. db.products.createIndex({productName: "text"});
+	
+	#Use query like
+	db.products.find({ $text: {$search : "MongoDB Sleeve"}});
+	
+	# when this query runs, it will get all the documents contain MongoDB or Sleeve. So, we can use the textScore for best match
+	db.products.find({ $text: {$search : "MongoDB Sleeve"}}, {score: {$meta: "textScore"}}).sort({score: {$meta: "textScore"}};
+	
+```
+
+* Under the hood, it works as a Multikey Index as server is going to create a key for each unique word in the text where comma and hypen (-) are delimiters.
+
+* For in case of text, "MongoDB Long Sleeve T-Shirts"
+* The text index key will be "mongodb", "long", "sleeve", "t", "shirts".
+* Please note that all the keys are in lowercase as text indexes are case insensitive.
+
+* Please note that with text indexes, there will be more keys to be examined, index size will be big, it takes more time to build index, more write time as well.
+
+##Collation
+* Collation allows users to specify langauge specific rules for String comparison
+* Collation can be defined at several different level like collection, index etc.
+* Collation have below options:
+
+```
+	{
+		locale: <string>,
+		caseLevel: <boolean>,
+		caseFirst: <string>,
+		strength: <int>,
+		numericOrdering: <boolean>,
+		alternate: <string>,
+		maxVariable: <string>,
+		backwards: <boolean>
+	}
+```
+
+* We can define specific collations in an index. In case of a index having a collation, the query predicate must have the same collation to use that index
+
+* Collations allow the creation of case insensitive indexes
+
+
+##Wildcard Indexes
+* Allows to create dynamic index on all the fields or selected subset of fields
+* Useful for unpredicatable workloads and An application consistently queries against document fields that use the Attribute Pattern.
+* Not replacement of traditional indexes
+* To create wildcard index for all the fields, command will be like db.<Collection>.createIndex({"$**":1});
+* To create for set of fields, use projection option in above command
+* db.<Collection>.createIndex({'sub_field.$**':1}, {"wildcardProjection": {"includedField": 1}});
+
+
+* Using the wildcardProjection flag with Wildcard Indexes, we can include/exclude a set of fields in the Wildcard Index.
+
+
+##Question
+
+
+```
+#Given the following index:
+{ "first_name": 1, "address.state": -1, "address.city": -1, "ssn": 1 }
+
+#Which of the following queries are able to use it for both filtering and sorting?
+
+1) db.people.find({ "first_name": "Jessica", "address.state": { $lt: "S"} }).sort({ "address.state": 1 })
+
+2) db.people.find({ "address.state": "South Dakota", "first_name": "Jessica" }).sort({ "address.city": -1 })
+
+3) db.people.find({ "first_name": "Jessica" }).sort({ "address.state": 1, "address.city": 1 })
+
+4) db.people.find({ "address.city": "West Cindy" }).sort({ "address.city": -1 })
+
+5) db.people.find({ "first_name": { $gt: "J" } }).sort({ "address.city": -1 })
+
+```
+
+* Correct answers are 1,2,3 
+* Detailed explaination
+```
+Here's an explanation for each query:
+
+db.people.find({ "first_name": { $gt: "J" } }).sort({ "address.city": -1 })
+
+No, this query doesn't use equality on the index prefix. When using an index for filtering and sorting the query must include equality conditions on all the prefix keys that precede the sort keys. Moreover, on the sort predicate it skipped the next key in the prefix "address.state".
+
+db.people.find({ "first_name": "Jessica" }).sort({ "address.state": 1, "address.city": 1 })
+
+Yes, this query matches with equality on the query predicate with an index prefix, and continues the prefix in the sort predicate by walking the index backward.
+
+db.people.find({ "first_name": "Jessica", "address.state": { $lt: "S"} }).sort({ "address.state": 1 })
+
+Yes, while this query fails to use equality on the "address.state" field of the index prefix, it uses the same field for sorting.
+
+db.people.find({ "address.city": "West Cindy" }).sort({ "address.city": -1 })
+
+No, this query does not use an index prefix.
+
+db.people.find({ "address.state": "South Dakota", "first_name": "Jessica" }).sort({ "address.city": -1 })
+
+Yes, this query is able to use the index prefix. The order of the fields in the query predicate does not matter. Since both address.state and first_name are part of the index prefix, this query can utilize the index for the equality condition.
+```
+
+
+
+##Resource allocation for indexes
+* Indexes help with optimizing the query and reducing the response time
+* We can consider resource allocation of index by looking at 
+	* Determine index size: 
+	* Resource allocation: RAM + Disk
+	* Edge Cases: Occasional  Reports + Right-end-side index increments
+	
+	
+* For the fastest processing, we should ensure that our indexes fit entirely in RAM
+* Indexes are not required to be entirely placed in RAM, however performance will be affected by constant disk access to retrieve index information.
+
+
+* Note : SORT_KEY_GENERATOR in explain out of a query indicates that in-memory sort has happended
+* We can use a index both in filtering and sorting if our index field are in equality condition
+##Index Selectivity
+* When choose indexes, we need to make sure that most selective fields are first.
+
+##Equlity, Sort, Range
+* We should use this to order our index fields. It means the field which is participating in equality should come as first field in index and then sort and then range related fields
+
+
+##Covered query
+* These are very performant queries as they are satisfied entrely by indexes
+* That means 0 documents need to be examined
+
+* When a query has all the fields which are part of index and also, all the fields in projection also part of index.
+
+
+* You cannot cover a query if
+	* Any of the indexed fields are arrays
+	* Any of the indexed fields are embedded documents
+	* When run against a mongos if the index does not contain the shard key
+	
+```
+#Question:
+Given the following indexes:
+{ _id: 1 }
+{ name: 1, dob: 1 }
+{ hair: 1, name: 1 }
+
+Which of the following queries could be covered by one of the given indexes?
+
+
+
+#Detailed explaination
+db.example.find( { _id : 1117008 }, { _id : 0, name : 1, dob : 1 } )
+
+	No, this query would use the _id index, which doesn't match the projected fields.
+
+db.example.find( { name : { $in : [ "Alfred", "Bruce" ] } }, { name : 1, hair : 1 } )
+
+	No, this query would use the { name: 1, dob: 1 } index, but it forgets to omit the _id field.
+
+db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, hair : 1, name : 1} )
+
+	No, this query would use the { name: 1, dob: 1 } index, but it is projecting the hair field.
+
+db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, dob : 1, name : 1} )
+
+	Yes, this query would use the { name: 1, dob: 1 } index, which matches the fields in the projection.
+
+
+```
+
+##Perfomant way to utilize indexes on reg exp
+* For query db.user.find({username: /Amit/}); if no index is available a collection scan will be done. 
+* But if we create a index on username, still the all the indexes need to be analysis to perform this reg ex operation.
+
+* The performant way to use index of reg ex is by using ^, so that only indexes starting with that work are examined.
+
+* Please note this is application for db.user.find({username: /^Amit/}); where each index starting with Amit will be analysed
+* But this is not applicable for db.user.find({username: /^.Amit/}); as in this case, reg ex needs to be applied for all the indexes
+
+
+
+##Index usage of aggregation
+* In an aggregation pipeline, whatever the stage usage indexes need to be placed first. It is important to note that if a stage doesn't use index, all the next stages in the pipeline will not be able to use index.
+
+* Below are the stages we should try to place first in the aggregation
+	* $match
+	* $limit 
+	* $sort
+
+* When $limit and $sort are close together a very performant top-k sort can be performed
+* Transforming data in a pipeline stage prevents us from using indexes in the stages that follow
+
+* Memory Constraints
+	* The result of a aggregation pipeline cannot exceed 16MB. So, it is recommended to use $limit and $project stages in pipeline
+	* Stage index usage cannot exceed to 100MB. If required, use allowDiskUsage for extra memory. This cannot be done for graphLookup
+	
+	
+
+##Working with distributed systems
+* Consider latency
+* Data is spread across different nodes
+* Read implications 
+* Write implications
+* Scatter gather and routed queries
+* sorting, limit & skip
+
+
+* Vertical scaling is costly than horizontal scaling.
+
+
+* Before Sharding, we should consider below
+	* Sharding is an horizontal scaling solution
+	* Have we reached the limit of our vertical solution?
+	* You need to understand how your data grows and how your data is accessed
+	* Sharding works by defining key based ranges - our shard key
+	* It's important to get a good shard key
+	
+
+* Shard Key should have
+	* high cardanality
+	* high frequency
+	* less monotonically rate of change
+
+* TO increase cardanality, we can use compound shard key where the second field can be "_id" or any monotically changing field
+
+
+##BUlk Write in Sharded env
+* In a shard env, it is good to use "Unordered" bulk write because if the bulk write is ordered, each write in this will be executed sequentially.
+
+* Ordered bulk operations are slower than unordered.
+
+
+
+##Aggregation pipeline on sharded cluster
+* Generally merging happens on random shard, but in case of below aggregation stages, merging happens on primary shard
+	* $out
+	* $facet
+	* $lookup
+	* $graphLookup
+	
+* So, in case of above stages, primary shard will be under high load. Hence, if we are using these very frequently, we should consider using high resources for primary shard.
+
+
+#M201 Exam
+##Question 1
+
+* Let's take a look at why each of the other statements are false:
+
+** You can index multiple array fields in a single document with a single compound index.
+
+* Multikey indexes allow us to index on array fields, but they do not support indexes on multiple array fields on single documents.
+
+** Covered queries can sometimes still require some of your documents to be examined.
+
+* A query is covered if and only if it can be satisfied using the keys of the index.
+
+** Write concern has no impact on write latency.
+
+* Different write concerns can certainly impact your write latency. Write concerns that only need acknowledgment from a primary are generally faster than ones that need acknowledgment from a majority of replica set members.
+
+** A collection scan has a logarithmic search time.
+
+No, collection scans have a linear search time.
+
+##Question 2
+
+** All of the following statements are true!
+* Indexes can decrease insert throughput.
+* Partial indexes can be used to reduce the size requirements of the indexes.
+* It's important to ensure that secondaries with indexes that differ from the primary not be eligible to become primary.
+* Indexes can be walked backwards by inverting their keys in a sort predicate.
+* It's important to ensure that your shard key has high cardinality.
+
+##Question 3
+
+* Let's take a closer look at each of these possibilities:
+
+** MongoDB indexes are markov trees.
+
+* No, MongoDB indexes are designed using B-trees.
+
+** By default, all MongoDB user-created collections have an _id index.
+
+* Yes, this is true!
+
+** Background index builds block all reads and writes to the database that holds the collection being indexed.
+
+* No, foreground index builds block all reads and writes to the database that holds the collection being indexed. Background index builds don't have this limitation, but are generally slower than foreground index builds.
+
+** It's common practice to co-locate your mongos on the same machine as your application to reduce latency.
+
+* Yes, this is true!
+
+** Collations can be used to create case insensitive indexes.
+
+* Yes, this is true!
+
+
+##Question 4
+
+** Indexes can solve the problem of slow queries.
+
+* This is correct.
+
+** Indexes are fast to search because they're ordered such that you can find target values with few comparisons.
+
+* This is correct.
+
+** Under heavy write load you should scale your read throughput by reading from secondaries.
+
+* No, since writes are replicated to secondaries all members of the replica set have about the same write workload, therefore sending reads to a secondary will not scale you read throughput. However, after MongoDB 4.0 all secondary reads can read from snapshot without being blocked by replication writes.
+
+** When you index on a field that is an array it creates a partial index.
+
+* No, when you index a field that is an array it creates a multikey index.
+
+** On a sharded cluster, aggregation queries using $lookup will require a merge stage on a random shard.
+
+* No, $lookup, $graphLookup, $facet, and $out all require a merge stage on the primary shard, not a random shard like most other merged queries.
+
+##Question 5
+
+* Let's take a moment to examine each of the choices:
+
+** Compound indexes can service queries that filter on any subset of the index keys.
+
+* No, not all subsets of a index's keys can service a query. The prefix of an index's keys can service a query.
+
+** Compound indexes can service queries that filter on a prefix of the index keys.
+
+* Yes, this is true!
+
+** If no indexes can be used then a collection scan will be necessary.
+
+* Yes, this is true and should be avoided!
+
+** Query plans are removed from the plan cache on index creation, destruction, or server restart.
+
+* Yes, this is true!
+
+** By default, the explain() command will execute your query.
+
+* No, by default explain() will not execute your query. This is useful to test queries that need to run on a server under heavy load. Passing "executionStats" or "allPlansExecution" will execute the query and collect execution statistics.
+
+##Question 6
+
+** An index doesn't become multikey until a document is inserted that has an array value.
+
+* This is correct!
+
+** Running performance tests from the mongo shell is an acceptable way to benchmark your database.
+
+* No, you're performance tests should be as close to your production environment as possible. The mongo shell is designed for administrative tasks and ah-hoc queries, not performance benchmarks. You'd also be running in a single thread, which is unlikely how you'd be operating in production.
+
+** You can use the --wiredTigerDirectoryForIndexes option to place your indexes on a different disk than your data.
+
+* This is correct!
+
+** Indexes can only be traversed forward.
+
+* No, indexes can be traversed both forward and backward.
+
+** The ideal ratio between nReturned and totalKeysExamined is 1.
+
+* This is correct!
+
+
+#M301
+
+##Constraints for data modeling
+* The nature of the dataset and hardware define the needs to model your data
+* It is important to identify those exact constraints and their impact to create a better model
+* As your software and the technological landscape change, your model should be re-evaluated and updated accordingly.
+
+* Following constraints that would impact your data model for MongoDB
+	* RAM
+	* Disk Drives
+	* Network Latency
+	* Security
+
+##Transactions
+* https://www.mongodb.com/transactions
+* https://docs.mongodb.com/manual/core/transactions/
+
+##Methodology for data modeling
+* Methodology composes of 3 things
+	* Phase1 (Workload): Describes the workload 
+			* data size, important reads and writes
+			* quantify ops and qualify ops
+			
+	* Phase2 (Relationships) : Identify relationships between entities
+			* identify them, link or embed the related entities
+			
+	* Phase3 (Patterns): Apply Design pattern/transformations
+			* apply the ones for needed optimization
+			
+	
+* Phase1: 
 -------------
 
 mongo "mongodb+srv://sandbox-2mtgq.mongodb.net/test" --username m001-student  --password m001-mongodb-basics
