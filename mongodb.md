@@ -369,19 +369,19 @@ mongos -f mongos.conf
 * A database can contain both sharded collections and unsharded collecitons
 
 
-##Good Sharding Key
+## Good Sharding Key
 * To provide good write distribution. Shard Key should have
 * High Cardinality (lots of unique possible values)
 * Low Frequency (very little repetition of those unique values)
 * Non-monotonically changing (non-linear change in values)
 	
-##How to Shard
+## How to Shard
 * Use sh.enableSharding("<database>") to enable sharding for a specified database
 * Use db.<collection>.createIndex() to create  the index for your shard key fields
 * Use sh.shardCollection("<database>.<collection>", {shard key}) to shard the collection
 
 
-##Hashed Shard Key
+## Hashed Shard Key
 * Provide even distribution for monotonically changing shard keys
 * 
 
@@ -392,13 +392,13 @@ mongos -f mongos.conf
 * Hashed indexes doesn't support fast sorting
 
 
-###How to create Hashed Shard
+### How to create Hashed Shard
 * Use sh.enableSharding("<database>") to enable sharding for a specified database
 * Use db.<collection>.createIndex({"<field>": "hashed"}) to create  the index for your shard key fields
 * Use sh.shardCollection("<database>.<collection>", {"<shard key field>" : "hashed"}) to shard the collection
 
 
-##Chunk 
+## Chunk 
 * Logical grouping of documents
 * Lower limit (min key) is inclusive and uper limit (max key) is exclusive
 * Default chunk size is 64MB. A chunk can be of size 1MB <= Chunk Size <= 1024MB
@@ -410,7 +410,7 @@ db.settings.save({_id: "chunksize", value: 2}) //2 is in MB
 * A chunk can only live at one designated shard at a time
 
 
-###Jumbo Chunk
+### Jumbo Chunk
 * Larger than defined chunk size
 * Cannot move jumbo chunk
 	* Once marked jumbo, the balancer skips these chunks and avoids trying to move them
@@ -418,13 +418,13 @@ db.settings.save({_id: "chunksize", value: 2}) //2 is in MB
 * In some cases, these will not be able to split
 
 
-##Balancer
+## Balancer
 * Balancer process runs on primay member of Config Server replica set
 * Balancer is responsible for evenly distributing chunks across the sharded cluster
 * Balancer is an automatic process and requires minimal user configuration
 
 
-##Mongos
+## Mongos
 * mongos handles all the queries in the cluster
 * mongos builds a list of shard to target a query and merges the result from each shard
 * mongos supports standard query modifiers like sort, limit and skip
@@ -439,8 +439,8 @@ db.settings.save({_id: "chunksize", value: 2}) //2 is in MB
 * Without shard key, mongos must perform a scatter-grather query means it wll check with each shard
 
 
-#M121
-##Aggregation Pipeline
+# M121
+## Aggregation Pipeline
 * Pipelines are compostion of stages. Can contain one or more stages.
 db.userColl.aggregate([{stage1}, {stage2}, {...stageN}], {options})
 * Stages are configured to transform data. Stages are composed of one or more aggregration operators or expressions.
@@ -450,7 +450,7 @@ db.userColl.aggregate([{stage1}, {stage2}, {...stageN}], {options})
 * Query Operators: $gte, $lt, $in etc..
 
 
-##Filtering using $match
+## Filtering using $match
 * $match uses standard query operator syntax.
 * $match should be the early stage...being the first stage, it takes the advances of indexes. 
 * with $text query operator, $match must the first stage. 
@@ -470,7 +470,7 @@ db.movies.aggregate([
 					]).itcount();
 ```
 
-##Shaping documents with project
+## Shaping documents with project
 * Syntax
 db.collecitons.aggregate([{$project: {.....}}])
 * Once we specify one field to retain, we must specify all fields we want to retain. The _id is only expection to this case.
@@ -517,7 +517,7 @@ db.movies.aggregate([
 ```
 
 
-##$addFields
+## $addFields
 * To retain transformed fields along with existing fields
 * Example
 
@@ -536,25 +536,25 @@ db.movies.aggregate([
 ]).pretty();
 ```
 
-##$geoNear
+## $geoNear
 * Aggregation stage to perform geo related queries
 * $geoNear requires collection to have one and only one 2dsphere index
 * If using 2dsphere, the distance is returned in meters. If using legacy co-ordinates, the distance is returned in radians. 
-* $geoNear must be the first stage in aggregration pipeline.
+* $geoNear must be **the first stage** in aggregration pipeline.
 
 
-##Cursor like stages
+## Cursor like stages
 * $limit: {integer}
 * $skip: {integer}
-* $count: <name we want the count to be called>
-* $sort: {<field on which we want to sort on>, <integer, direction to sort .. -1 mean desc, 1 means 1>}
+* $count: \<name we want the count to be called\>
+* $sort: {\<field on which we want to sort on\>, \<integer, direction to sort .. -1 mean desc, 1 means 1\>}
  
 * $sort take advantage of indexes if used early withing a pipeline
 * BY default, $sort will only use upto 100MB of RAM. Setting allowDiskUsage: true will allow for larger sorts.
 
 ##$sample
 * Select a set of random documents from a collection
-* {$sample: {size : <N, how many documents}}
+* {$sample: {size : \<N, how many documents}}
 When N<=5% of number of documents in source collections AND
 Source collection has >=100 documents AND
 $sample is the first stage
