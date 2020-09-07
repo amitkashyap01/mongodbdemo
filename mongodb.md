@@ -1,28 +1,30 @@
 ## mongod defaults
 
-* port: 27017			(To change: mongod --port <port number>)
-* DB path: /data/db   (To change: mongod --dbpath <directory path>
+* port: 27017		(To change: mongod --port <port number>)
+* DB path: /data/db     (To change: mongod --dbpath <directory path>
 * bind_ip: localhost	(To allow clients running on 123.123.123.123: mongod --bind_ip 123.123.123.123)
-* auth: disabled		(To enable: mongod --auth) 
+* auth: disabled	(To enable: mongod --auth) 
 
 
 ### command line options 		Configuration File Options
---auth							security.authorization
---dbpath						storage.dbPath
---logpath						systemLog.path and systemLog.destination
---bind_ip						net.bind_ip
---replSet						replication.replSetName
+```
+--auth					security.authorization
+--dbpath				storage.dbPath
+--logpath				systemLog.path and systemLog.destination
+--bind_ip				net.bind_ip
+--port					net.port
+--replSet				replication.replSetName
 --keyFile
 --sslPEMKey
 --sslCAKey
 --sslMode
 --fork (run a deamon)
 
-
- --fork has to be used with --logpath or --syslog
+Note:  --fork has to be used with --logpath or --syslog
+```
 
 ## mongod Configuration File (in yaml)
-  
+```
 storage:
   dbPath: /var/mongodb/db
 net:
@@ -36,17 +38,18 @@ systemLog:
   logAppend: true
 processManagement:
   fork: true  //mongod process will run in the background
-
+```
 
 
 ### To use this configuration file...use command	
+
+```
 mongod --config "/etc/mongod.conf"
 or
 mongod -f "/etc/mongod.conf"
-
+```
 	
 ## To create a new user:
-
 ```
 mongo admin --host localhost:27000 --eval '
   db.createUser({
@@ -62,11 +65,9 @@ mongo admin --host localhost:27000 --eval '
 ## Basic commands
 ### Basic Helper Groups
 1. db.<method>(); //To help with db related operations
-  *  db.<collection>.<method>();
+1. db.<collection>.<method>();
 1. rs.<method>(); //To help with Replica Set related operations
 1. sh.<method>(); //To help with sharding related operations
-
-
 
 ### User Management
 * db.createUser();
