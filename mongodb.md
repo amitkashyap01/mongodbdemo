@@ -64,10 +64,10 @@ mongo admin --host localhost:27000 --eval '
 
 ## Basic commands
 ### Basic Helper Groups
-1. db.<method>(); //To help with db related operations
-1. db.<collection>.<method>();
-1. rs.<method>(); //To help with Replica Set related operations
-1. sh.<method>(); //To help with sharding related operations
+1. db.\<method\>(); //To help with db related operations
+1. db.\<collection\>.\<method\>();
+1. rs.\<method\>(); //To help with Replica Set related operations
+1. sh.\<method\>(); //To help with sharding related operations
 
 ### User Management
 * db.createUser();
