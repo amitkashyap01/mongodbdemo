@@ -1,13 +1,12 @@
-##mongod Defaults
-----------------
+## mongod defaults
 
-port: 27017			(To change: mongod --port <port number>)
-DB path: /data/db   (To change: mongod --dbpath <directory path>
-bind_ip: localhost	(To allow clients running on 123.123.123.123: mongod --bind_ip 123.123.123.123)
-auth: disabled		(To enable: mongod --auth) 
+* port: 27017			(To change: mongod --port <port number>)
+* DB path: /data/db   (To change: mongod --dbpath <directory path>
+* bind_ip: localhost	(To allow clients running on 123.123.123.123: mongod --bind_ip 123.123.123.123)
+* auth: disabled		(To enable: mongod --auth) 
 
 
-###command line options 		Configuration File Options
+### command line options 		Configuration File Options
 --auth							security.authorization
 --dbpath						storage.dbPath
 --logpath						systemLog.path and systemLog.destination
@@ -22,7 +21,7 @@ auth: disabled		(To enable: mongod --auth)
 
  --fork has to be used with --logpath or --syslog
 
-##mongod Configuration File (in yaml)
+## mongod Configuration File (in yaml)
   
 storage:
   dbPath: /var/mongodb/db
@@ -40,14 +39,15 @@ processManagement:
 
 
 
-###To use this configuration file...use command	
+### To use this configuration file...use command	
 mongod --config "/etc/mongod.conf"
 or
 mongod -f "/etc/mongod.conf"
 
 	
-##To create a new user:
------------------------
+## To create a new user:
+
+```
 mongo admin --host localhost:27000 --eval '
   db.createUser({
     user: "m103-admin",
@@ -56,12 +56,11 @@ mongo admin --host localhost:27000 --eval '
       {role: "root", db: "admin"}
     ]
   })
-'
+```
 	
 
-##Basic commands
-----------------
-###Basic Helper Groups
+## Basic commands
+### Basic Helper Groups
 1. db.<method>(); //To help with db related operations
   *  db.<collection>.<method>();
 1. rs.<method>(); //To help with Replica Set related operations
@@ -69,28 +68,28 @@ mongo admin --host localhost:27000 --eval '
 
 
 
-###User Management
+### User Management
 * db.createUser();
 * db.dropUser();
 
-###Collection Management
+### Collection Management
 * db.renameCollection();
 * db.collection.createIndex();
 * db.collection.drop();
 
-###Database Management
+### Database Management
 * db.dropDatabase();
 * db.createCollection();
 
-###Database Status
+### Database Status
 * db.serverStatus();
 
-###Database Commands
+### Database Commands
 db.runCommand({ <COMMAND> });
 db.commandHelp("<command>");
 
 
-###Logging Basics
+### Logging Basics
 * db.getLogComponents();
 * db.setLogLevel(0, "index");
   * -1 means logging verbosity is inheriated from parent
@@ -100,18 +99,18 @@ db.commandHelp("<command>");
 * To access the log from Mongo Shell -> db.adminCommand({ "getLog": "global" }) 
 * To access the log from Command Prompt -> tail -f <path-to-log-file> 
 
-###To shutdown mongod process
+### To shutdown mongod process
 use admin
 db.shutdownServer()
 
 
-##MongoDB Profiler
+## MongoDB Profiler
 When enabled, system will store all the profiling details on below operations in a new DB called **system** in a collection **profile**
 1. CRUD
 1. Adminitrative Operations
 1. Configuration Operations
 
-####Commands 
+#### Commands 
 db.getProfilingLevel()
 db.setProfilingLevel(1) // db.setProfilingLevel(1, {slowms: 0})
 
@@ -120,7 +119,7 @@ db.setProfilingLevel(1) // db.setProfilingLevel(1, {slowms: 0})
 * 2 (profile all ops)
 
 
-##Authentication Mechanisms
+## Authentication Mechanisms
 -- Four types for client authentication mechanisms
 1. SCRAM (Default) - Salted Challenge Response Authentication Mechanisms
 1. X.509 
@@ -129,39 +128,43 @@ db.setProfilingLevel(1) // db.setProfilingLevel(1, {slowms: 0})
 
 There is also, interal cluster authentication
 
-##Authorisation
+## Authorisation
 -- Role Based Access Control (RBAC)(roles - priveledges)
 
-###Roles
+### Roles
 - Role is a set of priveledges. A priveledge is a set of actions on resources (database, collection, clustral level resource).
 - A role can have Network Authentication Restrictions (clientSource, serverAddress)
 
-###Built-In Roles
+### Built-In Roles
 * Database User - read, readWrite, readAnyDatabase, readWriteAnyDatabase
 * Database Administration - dbAdmin, userAdmin, dbOwner, dbAdminAnyDatabase, userAdminAnyDatabase
 * Cluster Administration  - clusterAdmin, clusterManager, clusterMonitor, hostManager
 * Backup/Restore - backup, restore
 * Super User - root
 
-###userAdmin
+### userAdmin
 - Only deals with user management. Cannot create any database or update any data/db
+```
 db.createUser({
 	user: 'security_officer',
 	pwd: :'security_officer',
 	roles: [{db: 'admin', role: 'userAdmin'}]
 
 });
+```
 
-###dbAdmin
+### dbAdmin
 - To adminitrating database. Can do DDL, but not DML.
+```
 db.createUser({
 	user: 'dba',
 	pwd: :'dba',
 	roles: [{db: 'm103', role: 'dbAdmin'}]
 
 });
+```
 
-###dbOwner
+### dbOwner
 - Combination of readWrite, userAdmin and dbAdmin. Can do any adminitrative actions
 - A user can have different role on different db
 - Let's give dba user created previously a dbOwner role of playground db
@@ -169,10 +172,10 @@ db.grantRolesToUser('dba', [{db: 'playground', role: 'dbOwner'}]
 
 
 
-###TO get info on role
+### To get info on role
 db.runCommand({rolesInfo: {role: 'dbOwner', db: 'playground'}, showPrivileges: true})
 
-###How to do
+### How to do
 1. Enable authentication by adding below in configuration file
 security:
   authorization: enabled
@@ -180,20 +183,20 @@ security:
   * This will enable authentication and authorization
   
 1. Add a user in admin db with root priveledge
-
+```
 db.createUser({
 	user: "root",
 	pwd: "root",
 	roles: ["root"]
 	});
-
+```
 1. Start the mongo shell by providing the details
-
+```
 mongo --port 27000 --username root --password root --authenticationDatabase admin
+```
 
 
-
-##MongoDB Server Tools
+## MongoDB Server Tools
 * mongostat
 	mongostat --port 30000
 	
@@ -211,7 +214,7 @@ mongo --port 27000 --username root --password root --authenticationDatabase admi
 	
 	
 	
-##Replication
+## Replication
 - MongoDB uses Async Statement-Based Replication. Hence, plateform independent.
 - Other than PRIMARY and SECONDARY nodes in a replica set, we can also have "ARBITER" node..which holds NO Data, can vote in an election (can serve for ti breaker), cannot become primary ARBITER node will have priority 0.
 - Raft is a protocol for implementing distributed consensus.
@@ -222,8 +225,9 @@ mongo --port 27000 --username root --password root --authenticationDatabase admi
 - Secondary node can be defined as HIDDEN node..which can have data which is hidden from application. A hidden node will have PRIORITY 0.
 - Can be also a DELAYED node...it will have "slaveDelay": 3600...can serve  to provide hot backup
 
+```
 mongo --host "m103-repl/localhost:27001" --username abcs --password asdfasdf --authenticationDatabase admin
-
+```
 - To enabled replica set, Add below in mongod.conf file
 security:
   keyFile: /var/mongodb/pki/m103-keyFile
@@ -234,7 +238,7 @@ replication:
 openssl rand -base64 741 > /var/mongodb/pki/m103-keyFile
 - Add chmod 600 /var/mongodb/pki/m103-keyFile
 - 
-##Replica Set Commands
+## Replica Set Commands
 * rs.initiate() -- To initiate replica set
 * rs.status()  	-- Reports health on replica set nodes..get data from heartbeats
 * rs.add("localhost:27001") -- To add new node to replica set
@@ -244,12 +248,12 @@ openssl rand -base64 741 > /var/mongodb/pki/m103-keyFile
 * rs.printReplicationInfo() -- Only returns oplog data relative to current node. Contains timestamps for the first and last oplog events.
 * rs.addArb("localhost:800909") -- To add a arbiter node
 
-##Replica Set reconfiguration
+## Replica Set reconfiguration
 * rs.conf() -- TO get the current configuration of all the nodes
 * rs.reconfig(cfg) -- To reconfigure...
 
 
-##Local DB
+## Local DB
 * local database contains oplog.rs collection along with other collections. oplog.rs will keep track of all the replications. This is a capped collection that means it will be limited size. It's size is normally 5% of free disk.
 * oplog size can also be set in configuration file with below option
 replication:
@@ -259,12 +263,12 @@ replication:
 * Any data written in local database will not be replicated.
 
 
-##Read and Write 
+## Read and Write 
 * rs.slaveOk() -- To commands run from secondary node to tell mongo db to enable read operation 
 
 
-##Write Concerns
-###Write Concerns Level
+## Write Concerns
+### Write Concerns Level
 Higher the level, higher the durability of the data. Means more nodes have received the write.
 * 0 - Don't wait for acknowledgement
 * 1 (default) - Wait for acknowledgement from the primary only
@@ -272,11 +276,11 @@ Higher the level, higher the durability of the data. Means more nodes have recei
 * 'majority' - Wait for acknowledgement  for majority of replica set members
 
 
-###Write Concerns Options
+### Write Concerns Options
 * wtimeout: <int> - the time to wait for requested write concern before marking the operation as failed
 * j: <true|false> - requires the node to commmit the write operation to journal before returning an acknowledgement
 
-###Write Concerns Commands
+### Write Concerns Commands
 
 * In case for below insert operation, we have 3 node replica set. One node is failed. We will have write operation still committed on healthly nodes. Also, unhealthy nodes will receive the new document once it comes back online.
 
@@ -287,18 +291,18 @@ db.employees.insert(
 )
 ```
 
-##Read Concerns
+## Read Concerns
 
-###Read Concerns Level
+### Read Concerns Level
 * local
 * available (sharded clusters)
 * majority
 * linerizable -- majority committed + read your own write functionality. Strongest Durability.
 
-###Read Preference
+### Read Preference
 Read Preference lets you route read operation to specific replica set members:
 
-####Read Preference Modes:
+#### Read Preference Modes:
 * primary (Default)
 * primaryPreferred
 * secondary
@@ -306,14 +310,14 @@ Read Preference lets you route read operation to specific replica set members:
 * nearest             -- Least latency
 
 
-##SHARDING
+## SHARDING
 * Horizontal scaling
 * Shards: store distributed collections
 * Metadata: Information about which data is store in the sharde
 * Config Servers: Store metadata of each shards
 * Mongos: routes the queries to the correct sharde
 
-##When to do sharding
+### When to do sharding
 * When vertical scaling either not possible or not econamical from operational viewerRating
 * When data needs to be stored based on geographical location
 
