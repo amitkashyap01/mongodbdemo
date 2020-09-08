@@ -552,14 +552,14 @@ db.movies.aggregate([
 * $sort take advantage of indexes if used early withing a pipeline
 * BY default, $sort will only use upto 100MB of RAM. Setting allowDiskUsage: true will allow for larger sorts.
 
-##$sample
+## $sample
 * Select a set of random documents from a collection
 * {$sample: {size : \<N, how many documents}}
 When N<=5% of number of documents in source collections AND
 Source collection has >=100 documents AND
 $sample is the first stage
 
-##$arrayElemAt:
+## $arrayElemAt:
 
 ```
 db.movies.aggregate([
@@ -580,7 +580,7 @@ db.movies.aggregate([
 ]);
 ```
 
-##$group stage
+## $group stage
 ```
 {
 	$group: 
@@ -634,7 +634,7 @@ db.movies.aggregate([
 ])
 ```
 
-##Accumulator expressions with $project 
+## Accumulator expressions with $project 
 
 * Available accumulator expression in project : $sum, $avg, $max, $min, $stdDevPop (Standard Diviation Population), $stdDevSam (Standard Divition Sample)
 * Within $project, expressions have no memory between documents
@@ -645,7 +645,7 @@ $$value refers to current accumulator value
 
 
 
-##$unwind stage
+## $unwind stage
 * $unwind stage is used to unwind a array field
 * $unwind has 2 forms
 	* Short Form
@@ -664,25 +664,25 @@ $$value refers to current accumulator value
 * $unwind may cause peformance issue on large collections
 
 
-##Bulk Write:
+## Bulk Write:
 * Bulk writes allows MongoDB clients to send multiple writes together
 * Bulk Writes can be ordered or unordered. 
 * Default is "Ordered". In case of ordered, executes writes sequentially and will end execution after first write failure.
 
-##Connection Pooling
+## Connection Pooling
 * Connection pools allow for reuse of connections
 * Subsequent requests appear faster to client
 * Default connection pool size in MongoDB is 100.
 * Always use connection pooling
 
 
-##Connection Configuration
+## Connection Configuration
 * Always try to set wtimeout with writeConcern majority. E.g.
 {w: "majority", wtimeout: 5000}
 
 * Always configure for and handle serverSelectionTimeout errors.
 
-##Final Exam
+## Final Exam
 * skip will always be executed before limit. Even if their order is different
 ```
 db.movies.aggregate([
@@ -712,7 +712,7 @@ db.movies.aggregate([
 ]);
 ```
 
-##$lookup stage
+## $lookup stage
 * It is similar to join operation in relational database
 * Syntax
 	$lookup:{
@@ -759,7 +759,7 @@ db.air_routes.aggregate([
   ]);
 ```
 
-##$groupLookup 
+## $groupLookup 
 * $groupLookup provides MongoDb a trasitive closure implementation
 * $groupLookup provides MongoDB a graph or a graph-like capability
 * Syntax
@@ -786,7 +786,7 @@ db.air_routes.aggregate([
 * from collection cannot be sharded
 * memory allocation $allowDiskUsage
 
-#Facet
+# Facet
 * Introduced in MongoDB 3.4
 * Single query facets are supported by the new aggregation pipeline stage $sortByCount.
 * As like any other aggregation pipelines, except for $out, we can use the output of this stage, as input for downstream stages and operators, manipulating the dataset accordingly.
@@ -820,7 +820,7 @@ is equivalent to
 	}
 ```
 
-##Facet Bucket ($bucket stage)
+## Facet Bucket ($bucket stage)
 * When we want returned values in ranges
 * We must always specify at least 2 values in boundaries
 * boundaries must all be of the same general type (String, Numeric)
@@ -851,7 +851,7 @@ is equivalent to
 ```
 
 
-##Automatic Buckets ($bucketAuto stage)
+## Automatic Buckets ($bucketAuto stage)
 * Given a number of buckets, try to distribute documents evenly accross buckets.
 * Cardinality of groupBy may impact even distribution and number of buckets
 * Syntax
@@ -878,7 +878,7 @@ is equivalent to
 * adhere bucket boundaries to a numerical series set by the granularity option.
 * Specifying granularity requies the expression to groupBy to resolve to a numeric value
 
-##Multiple Facets using $facet stage
+## Multiple Facets using $facet stage
 * The $facet stage allows several sub-pipelines to be executed to produce multiple facets.
 * The $facet stage allows the application to generate several different facets with one single database request
 * The output of the individual $facet sub-pipelines are not shared. That means all the sub-pipelines get the same copy of data
@@ -984,7 +984,7 @@ db.movies.aggregate([
 ```
 
 
-##$redact stage 
+## $redact stage 
 
 * Protect the information from unauthorized access
 * $redact has following forms
@@ -1021,7 +1021,7 @@ db.employees
 
 ``` 
 
-##$out stage
+## $out stage
 * Will create a new collection or overwrite the existing collection if specified
 * Honors indexes on existing collections
 * Will not create or overwrite data if pipeline errors.
@@ -1037,7 +1037,7 @@ db.collection.aggregate([ {stage1}, {stage2}...{stageN}, {$out: "new_collection"
 * new_collection must be unsharded
 
 
-##$merge stage
+## $merge stage
 * Introduced in MongoDB 4.2
 * Like $out stage, $merge stage must also be the last stage of the pipeline
 * Unlike $out stage, $merge stage has below properties
@@ -1087,7 +1087,7 @@ db.collection.aggregate([ {stage1}, {stage2}...{stageN}, {$out: "new_collection"
 
 ```
 
-#Views
+# Views
 * MongoDB provides non-materized views that means the view is computed everytime a read operation is performed against that view
 * Views contain no data themselves. They are created on demand and reflects data in the source collection.
 * Views are read-only. Write operations to view will error.
@@ -1107,7 +1107,7 @@ db.collection.aggregate([ {stage1}, {stage2}...{stageN}, {$out: "new_collection"
 	db.createView(<view_name>, <source_collection>, <pipeline>, <collation>)l
 ```
 
-##$merge Single View Example
+## $merge Single View Example
 ```
 //$merge updates fields from mflix.users collection into sv.users collection. Our "_id" field is unique username.
 //here, db is mflix db.
@@ -1166,7 +1166,7 @@ db.users.aggregate([
 
 * The query in a $match stage can be entirely covered by an index
 
-#Final Exam:
+# Final Exam:
 * geoNear needs to be the first stage of our pipeline
 * $out is required to be the last stage of the pipeline
 * $indexStats must be the first stage in a pipeline and may not be used within a $facet
@@ -1176,7 +1176,7 @@ e.g. db.collection.aggregate([{"$match": { "a" : {"$sum": 1}  }}]);
 * 
 
 
-#M220J
+# M220J
 * MongoDB URI
 mongodb+srv://username:password@hostname/database
 
@@ -1207,14 +1207,14 @@ Bson bson;
 * But the order by which aggregation stages are defined in the pipeline does!
 
 
-##Write operations
+## Write operations
 * doc.append() and doc.put() do the basically the same thing but put method will replace a key if that is already existing.
 
 * Though collection.insertOne(doc) method returns void if all goes well but if there is an error will inserting, it will return MongoWriteException. 
 
 
 
-#M201
+# M201
 ## Hardware considerations and configurations
 
 * Below MongoDB data management operations make use of memory resource
@@ -1237,7 +1237,7 @@ Bson bson;
 * CPU availability impacts the performance of MongoDB, especially if using the WiredTiger storage engine.
 
 
-##Indexes
+## Indexes
 * Indexes are used to increase the speed of our queries. Indexes reduce the number of documents MongoDB needs to examine to satisfy a query.
 * The _id field is automatically indexed on all collections.
 * In MongoDB, indexes are maintained in BTree data structure
@@ -1246,7 +1246,7 @@ Bson bson;
 
 
 
-##How data stored on disk?
+## How data stored on disk?
 
 * MongoDB uses storage engine to store data on disk. There are multiple types of storage engine e.g. MMAPv1, Wired Tiger, Other etc.
 
@@ -1256,11 +1256,11 @@ Bson bson;
 Here, option directoryperdb will create separate directory for each database which will contains collection and index files.
 
 * If we use --wiredTigerDirectoryForIndexes in above command, a separate directory will be created for collection and indexes under db directory
-* journal folder cotains data which comes helpful in recovering from failure and syncing the data
+* journal folder contains data which comes helpful in recovering from failure and syncing the data
 
 
 
-##Single Field Index
+## Single Field Index
 * db.<collection>.createIndex({<field>: <direction>});
 
 * Key Features:
@@ -1291,23 +1291,20 @@ Here, option directoryperdb will create separate directory for each database whi
 * exp= db.movies.explain("allPlansExecution"); //Most verbose ...this executes the command
 
 
-##Sorting with Indexes
+## Sorting with Indexes
 * 2ways a sorting can happen
 	* In memory (by default 32mb memory used)
 	* Using indexes
 
 * Initial ordering of indexes doesn't matter while sorting by index. If the index was created with ascending order, and we are sorting using this index in ascending order, the direction will be forward otherwise backward.
 
-
-
-
-##Compound Indexes
+## Compound Indexes
 * The index which contains 2 or more fields
 * Compound indexes can be thought as ordered list 
 * Field(s) which come first are more useful in many ways
 
 
-##Index Prefixes
+## Index Prefixes
 * For a query on multiple fields that overlap with the index, identify which fields in the query can use the index
 * For example, for compound index {"item":1, "location":1, "stock":1}, prefixes can be
 	* {"item":1}
@@ -1315,7 +1312,7 @@ Here, option directoryperdb will create separate directory for each database whi
 	
 * So, if we have compound index, MongoDB can use this index while serving a query which has its index prefix.
 
-#Sort with index
+# Sort with index
 
 * We can use sort queries by using index prefixes in our sort predicates
 * We can filter and sort our queries by splitting up our index prefix between the query and sort predicates. Query part must preceed the sort part, and query must have equality filter.
@@ -1327,7 +1324,7 @@ Here, option directoryperdb will create separate directory for each database whi
 * We can invert the keys of an index in our sort predicate to utilize an index by walking it backwards.
 
 
-##Multikey Index
+## Multikey Index
 * Multikey index is a index which contains a array field.
 * Multikey index cann't contain all the fields as array fields. One of the field needs to a non-array field.
 * Each entry in array, server will create a separate index key
@@ -1335,7 +1332,7 @@ Here, option directoryperdb will create separate directory for each database whi
 	* Eg. db.products.createIndex({"stock.quantity": 1});
 * Where stock is array of documents and one of the field in the document is quantity
 
-##Partial Index
+## Partial Index
 * Partial index is used to index a subset of documents of a collection. Partial indexes can be used to reduce the number of keys in an index.
 * It reduces the performance cost of creating and maintaining indexes for all the documents. Also, it will consume less memory.
 * We need to provide a condition or query predicate while creating the index
@@ -1368,13 +1365,13 @@ E.g. db.restaurants.createIndex(
 
 * Partial indexes support compound indexes.
 
-##Partial Index Restrictions
+## Partial Index Restrictions
 * We cannot specify both partialFilterExpression and sparse options together
 * _id indexes cannot be partial indexes
 * Shard key indexes cannot be partial indexes
 
 
-##Text indexes
+## Text indexes
 * There are fields in a document which contain text and our query may be to search any text of this field.
 * On this type of field, we can create a text index (instead of ascending or desending)
 ```
@@ -1390,13 +1387,13 @@ E.g. db.restaurants.createIndex(
 
 * Under the hood, it works as a Multikey Index as server is going to create a key for each unique word in the text where comma and hypen (-) are delimiters.
 
-* For in case of text, "MongoDB Long Sleeve T-Shirts"
+* For example, in case of text, "MongoDB Long Sleeve T-Shirts"
 * The text index key will be "mongodb", "long", "sleeve", "t", "shirts".
 * Please note that all the keys are in lowercase as text indexes are case insensitive.
 
 * Please note that with text indexes, there will be more keys to be examined, index size will be big, it takes more time to build index, more write time as well.
 
-##Collation
+## Collation
 * Collation allows users to specify langauge specific rules for String comparison
 * Collation can be defined at several different level like collection, index etc.
 * Collation have below options:
@@ -1419,7 +1416,7 @@ E.g. db.restaurants.createIndex(
 * Collations allow the creation of case insensitive indexes
 
 
-##Wildcard Indexes
+## Wildcard Indexes
 * Allows to create dynamic index on all the fields or selected subset of fields
 * Useful for unpredicatable workloads and An application consistently queries against document fields that use the Attribute Pattern.
 * Not replacement of traditional indexes
@@ -1431,8 +1428,7 @@ E.g. db.restaurants.createIndex(
 * Using the wildcardProjection flag with Wildcard Indexes, we can include/exclude a set of fields in the Wildcard Index.
 
 
-##Question
-
+## Question
 
 ```
 #Given the following index:
@@ -1454,8 +1450,9 @@ E.g. db.restaurants.createIndex(
 
 * Correct answers are 1,2,3 
 * Detailed explaination
+
 ```
-Here's an explanation for each query:
+Here is an explanation for each query:
 
 db.people.find({ "first_name": { $gt: "J" } }).sort({ "address.city": -1 })
 
@@ -1478,8 +1475,6 @@ db.people.find({ "address.state": "South Dakota", "first_name": "Jessica" }).sor
 Yes, this query is able to use the index prefix. The order of the fields in the query predicate does not matter. Since both address.state and first_name are part of the index prefix, this query can utilize the index for the equality condition.
 ```
 
-
-
 ##Resource allocation for indexes
 * Indexes help with optimizing the query and reducing the response time
 * We can consider resource allocation of index by looking at 
@@ -1494,14 +1489,15 @@ Yes, this query is able to use the index prefix. The order of the fields in the 
 
 * Note : SORT_KEY_GENERATOR in explain out of a query indicates that in-memory sort has happended
 * We can use a index both in filtering and sorting if our index field are in equality condition
-##Index Selectivity
+
+## Index Selectivity
 * When choose indexes, we need to make sure that most selective fields are first.
 
-##Equlity, Sort, Range
+## Equlity, Sort, Range
 * We should use this to order our index fields. It means the field which is participating in equality should come as first field in index and then sort and then range related fields
 
 
-##Covered query
+## Covered query
 * These are very performant queries as they are satisfied entrely by indexes
 * That means 0 documents need to be examined
 
@@ -1513,8 +1509,8 @@ Yes, this query is able to use the index prefix. The order of the fields in the 
 	* Any of the indexed fields are embedded documents
 	* When run against a mongos if the index does not contain the shard key
 	
-```
-#Question:
+
+## Question:
 Given the following indexes:
 { _id: 1 }
 { name: 1, dob: 1 }
@@ -1524,7 +1520,7 @@ Which of the following queries could be covered by one of the given indexes?
 
 
 
-#Detailed explaination
+# Detailed explaination
 db.example.find( { _id : 1117008 }, { _id : 0, name : 1, dob : 1 } )
 
 	No, this query would use the _id index, which doesn't match the projected fields.
@@ -1544,7 +1540,7 @@ db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, dob : 1, na
 
 ```
 
-##Perfomant way to utilize indexes on reg exp
+## Perfomant way to utilize indexes on reg exp
 * For query db.user.find({username: /Amit/}); if no index is available a collection scan will be done. 
 * But if we create a index on username, still the all the indexes need to be analysis to perform this reg ex operation.
 
@@ -1555,7 +1551,7 @@ db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, dob : 1, na
 
 
 
-##Index usage of aggregation
+## Index usage of aggregation
 * In an aggregation pipeline, whatever the stage usage indexes need to be placed first. It is important to note that if a stage doesn't use index, all the next stages in the pipeline will not be able to use index.
 
 * Below are the stages we should try to place first in the aggregation
@@ -1572,7 +1568,7 @@ db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, dob : 1, na
 	
 	
 
-##Working with distributed systems
+## Working with distributed systems
 * Consider latency
 * Data is spread across different nodes
 * Read implications 
@@ -1600,14 +1596,14 @@ db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, dob : 1, na
 * TO increase cardanality, we can use compound shard key where the second field can be "_id" or any monotically changing field
 
 
-##BUlk Write in Sharded env
+## BUlk Write in Sharded env
 * In a shard env, it is good to use "Unordered" bulk write because if the bulk write is ordered, each write in this will be executed sequentially.
 
 * Ordered bulk operations are slower than unordered.
 
 
 
-##Aggregation pipeline on sharded cluster
+## Aggregation pipeline on sharded cluster
 * Generally merging happens on random shard, but in case of below aggregation stages, merging happens on primary shard
 	* $out
 	* $facet
@@ -1617,8 +1613,8 @@ db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, dob : 1, na
 * So, in case of above stages, primary shard will be under high load. Hence, if we are using these very frequently, we should consider using high resources for primary shard.
 
 
-#M201 Exam
-##Question 1
+# M201 Exam
+## Question 1
 
 * Let's take a look at why each of the other statements are false:
 
@@ -1638,7 +1634,7 @@ db.example.find( { name : { $in : [ "Bart", "Homer" ] } }, {_id : 0, dob : 1, na
 
 No, collection scans have a linear search time.
 
-##Question 2
+## Question 2
 
 ** All of the following statements are true!
 * Indexes can decrease insert throughput.
@@ -1647,7 +1643,7 @@ No, collection scans have a linear search time.
 * Indexes can be walked backwards by inverting their keys in a sort predicate.
 * It's important to ensure that your shard key has high cardinality.
 
-##Question 3
+## Question 3
 
 * Let's take a closer look at each of these possibilities:
 
@@ -1672,7 +1668,7 @@ No, collection scans have a linear search time.
 * Yes, this is true!
 
 
-##Question 4
+## Question 4
 
 ** Indexes can solve the problem of slow queries.
 
@@ -1694,7 +1690,7 @@ No, collection scans have a linear search time.
 
 * No, $lookup, $graphLookup, $facet, and $out all require a merge stage on the primary shard, not a random shard like most other merged queries.
 
-##Question 5
+## Question 5
 
 * Let's take a moment to examine each of the choices:
 
@@ -1718,7 +1714,7 @@ No, collection scans have a linear search time.
 
 * No, by default explain() will not execute your query. This is useful to test queries that need to run on a server under heavy load. Passing "executionStats" or "allPlansExecution" will execute the query and collect execution statistics.
 
-##Question 6
+## Question 6
 
 ** An index doesn't become multikey until a document is inserted that has an array value.
 
@@ -1741,9 +1737,9 @@ No, collection scans have a linear search time.
 * This is correct!
 
 
-#M301
+# M301
 
-##Constraints for data modeling
+## Constraints for data modeling
 * The nature of the dataset and hardware define the needs to model your data
 * It is important to identify those exact constraints and their impact to create a better model
 * As your software and the technological landscape change, your model should be re-evaluated and updated accordingly.
@@ -1754,11 +1750,11 @@ No, collection scans have a linear search time.
 	* Network Latency
 	* Security
 
-##Transactions
+## Transactions
 * https://www.mongodb.com/transactions
 * https://docs.mongodb.com/manual/core/transactions/
 
-##Methodology for data modeling
+## Methodology for data modeling
 * Methodology composes of 3 things
 	* Phase1 (Workload): Describes the workload 
 			* data size, important reads and writes
