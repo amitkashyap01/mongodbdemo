@@ -56,3 +56,27 @@ Until the chunk is fully migrated, the shard (donor) that is sending it to anoth
 - For a given database in a cluster, not all collections may be sharded. As a matter of fact, you are likely to shard only the very large collections. For the ease of management and to provide features like $lookup across collections, it makes sense to group all non-sharded collections together, and this location is referred to as the Primary Shard for this given database. Other databases in the cluster are likely to have a different Primary Shard to level the space and load between the shards.
 
 As a note, the term Primary Shard is used here, so be careful not to confuse this notion with the Primary replica in a replica set.
+
+
+- MongoDB uses Raft protocol to elect secondary node as primary in case of failover scenario.
+
+- MongoDB Architecture:
+
+* Layer1: MongoDB Query Language (MQL): MongoDB drivers uses this layer to send and receive MongoDB data as BSON.
+* Layer2: MongoDB Document Data Model - It manages namespaces, indexes and data structures. 
+* Layer3: Storage Layer - I contains storage engine like wiredTiger which is the default storage engine for MongoDB. 
+
+Along with these layers, we have 2 veritical layer which are Security and Admin.
+
+- For insertMany() method, the default is ordered insertion and when an error occured, the insertation will stop. To keep the insertation continue in case of error, we need to provide another argument to it as {"ordered": false}
+
+- using upsert: true as the third parameter of update() method after filter and update paramenters, means if the filter condition doesn't match any document, insert a new document in database.
+
+- findAndModify() - by default return the document before update. If new: true, it will return the updated document.
+- \_id can also be a document provided it is unique in the collection.
+ ```
+ e.g. 
+  db.hello.insert({_id: {a: 1, b: 2}, c: 8});
+  
+
+ ```
