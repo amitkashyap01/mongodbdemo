@@ -80,3 +80,60 @@ Along with these layers, we have 2 veritical layer which are Security and Admin.
   
 
  ```
+
+- db.hello.find({d: {$ne: 9}}); method will return all those documents as well which do not have d field at all.
+- db.hello.find({d: null}); This will return all the those documents where d matches with null as well those documents where key d is not there.
+
+###Array Operators:
+* $all : match all the documents where all the elements specified in $all are present (NOT necessirly in order)
+* $size
+* $elemMatch
+
+
+* db.hello.distinct("d");  It will return all the distinct values of field d from all documents
+* db.hello.distinct("d", {c:1});  It will return all the distinct values of field d where documents have value for field c as 1.
+* Order of cursor methods in which those work. It doesn't matter in which order you have metioned in your query
+1. sort
+2. skip
+3. limit
+
+* db.hello.update({d:32}, {c:121}); PLease note that this command will replace all the fields with c:121 where d is 32.
+* db.hello.update({d:32}, {$set: {c: 124}}); This is the case where only field c will be updated.
+
+## Indexes
+```
+ #To create index
+ db.hello.createIndex({c:1, d:1});
+ 
+ 
+ #To get indexes
+ db.hello.getIndexes();
+ 
+ #Important to understand
+ db.hello.find().sort({c:1, d:1});  - In this case index will be used
+ db.hello.find().sort({c:-1, d:-1}) - In this case index will be used.
+ 
+ db.hello.find().sort({c:1, d:-1}) - In this case, index will NOT be used.
+ db.hello.find().sort({d:1, c:1}) - In this case, index will NOT be used.
+ 
+ So, it is important to note that sequence of the field is important as well as sorting order must be as per the index which is created.
+ 
+```
+
+
+* Multikey indexes do not support covered queries.
+
+* explain() method has following arguments
+ * queryPlanner: This is default. This will not execute the query
+ * executionStats: This will execute the query
+ * allPlansExecution: This is for most verbose output. This will also execute the command.
+
+* db.hello.createIndex({a:1}, {unique:true}) - To create unique index on field a. This will throw an error if same value is inserted twice for field a.
+
+* You cannot create unique index on a field which is not present in all the documents. For such fields, we can use {unique: true, sparse: true}
+* Sparse index cannot be used for sorting.
+
+* With version mongodb 4.2:
+ * We can crete index in hybrid manner which has advantage of performance of foreground index creating and advantage of no locking of background index creation. Hybrid index builds are only type available now.
+ * With 4.2 version, we can have index key size limit more than 1024 bytes.
+
