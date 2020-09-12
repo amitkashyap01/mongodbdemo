@@ -16,6 +16,16 @@
 
 
 Important:
+* By default, test DB is connected when we start mongo.
+* Default size of a document is 16MB, default chunk size is 64MB (can be set 1MB to 1GB), default size of oplog is 5% of free disk (for 64bit machine, it is 192MB)
+
+* Maximum number of 64 indexes are possible on a collection. Maximum size of key size is 1MB.
+
+* In $type, we can provide either string or integer value of BSON type. Here, to search for a field containing null, provides it's integer equivalent BSON type i.e. 10. for example, db.hello.find({c: {$type: 10}}); 
+
+* MongoDB stores system information in collections that use the "<database>.system.*" namespace, which MongoDB reserves for internal use. Do not create collections that begin with system.
+ 
+
 - _id field of a document is immutable. That means it cannot be updated/replaced using MongoDB query.
 - As of MongoDB 4.0, journaling cannot be disabled for replica set members.
 https://docs.mongodb.com/manual/core/journaling/
@@ -136,4 +146,19 @@ Along with these layers, we have 2 veritical layer which are Security and Admin.
 * With version mongodb 4.2:
  * We can crete index in hybrid manner which has advantage of performance of foreground index creating and advantage of no locking of background index creation. Hybrid index builds are only type available now.
  * With 4.2 version, we can have index key size limit more than 1024 bytes.
+ 
+ 
+### Aggregation
+* The only limitation with $match operator is, it cannot use $where operator and if it is using $text, it must be first stage in pipeline.
+* $sort can take advantage of index if this is placed early in the pipeline. Otherwise it will do in-memory sorting and we can use allowDiskUsage:true for allowing sorting to use disk space.
+* $lookup is similar to Left Outer Join.
+
+* $out stage will out the aggregation output to a new collection in the same database. If the collection already exists, it will override. Also, this collection must be unsharded.
+
+* $merge is an improvement over $out where the output to can be merged with an existing collection and the new output collection can exist in the same database or other database. Here, the collection can be shared as well.
+
+* In case of $out, $facet, $lookup and $graphLookup, primary shard will do the work of merging results from all the shards. In case other operators, merging will happen on random shard.
+
+
+
 
