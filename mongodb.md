@@ -211,9 +211,9 @@ mongo --port 27000 --username root --password root --authenticationDatabase admi
 	mongoexport --port 30000 --db applicationData --collection products -o products.json
 	
 * mongoimport - import the JSON/csv representation of mongodb
-	mongoimport --port 30000 --username "m103-application-user" --password "m103-application-pass" --authenticationDatabase admin --db applicationData --collection products --file=/dataset/products.json
-	
-	
+```
+	mongoimport --port 30000 --username "m103-application-user" --password "m103-application-pass" --authenticationDatabase admin --db applicationData --collection products --file=/dataset/products.json	
+```
 	
 ## Replication
 - MongoDB uses Async Statement-Based Replication. Hence, plateform independent.
@@ -230,59 +230,61 @@ mongo --port 27000 --username root --password root --authenticationDatabase admi
 mongo --host "m103-repl/localhost:27001" --username abcs --password asdfasdf --authenticationDatabase admin
 ```
 - To enabled replica set, Add below in mongod.conf file
+```
 security:
   keyFile: /var/mongodb/pki/m103-keyFile
 replication:
   replSetName: m103-example    //mongo shell option for this --replSet
-  
+ ``` 
 - Generate keyFile
+```
 openssl rand -base64 741 > /var/mongodb/pki/m103-keyFile
 - Add chmod 600 /var/mongodb/pki/m103-keyFile
+```
+
 - 
 ## Replica Set Commands
 * rs.initiate() -- To initiate replica set
 * rs.status()  	-- Reports health on replica set nodes..get data from heartbeats
 * rs.add("localhost:27001") -- To add new node to replica set
 * rs.isMaster()			-- Describes a node's role in replica set
-* rs.setDown() 			-- To force an election by setting down from current primary 
+* rs.stepDown() 		-- To force an election by setting down from current primary 
 * db.serverStatus()['repl'] -- Section of the db.serverStatus() output
 * rs.printReplicationInfo() -- Only returns oplog data relative to current node. Contains timestamps for the first and last oplog events.
 * rs.addArb("localhost:800909") -- To add a arbiter node
 
 ## Replica Set reconfiguration
-* rs.conf() -- TO get the current configuration of all the nodes
-* rs.reconfig(cfg) -- To reconfigure...
-
+* rs.conf() -- To get the current configuration of all the nodes
+* rs.reconfig(cfg) -- To reconfigure the replica set.
 
 ## Local DB
-* local database contains oplog.rs collection along with other collections. oplog.rs will keep track of all the replications. This is a capped collection that means it will be limited size. It's size is normally 5% of free disk.
+* local database contains **oplog.rs** collection along with other collections. oplog.rs will keep track of all the replications. This is a **capped collection** that means it will be limited size. It's size is normally 5% of free disk.
 * oplog size can also be set in configuration file with below option
+```
 replication:
   oplogSize: 5MB
+```
 * Replication window is proportional to the system load
-* One operation may result in many oplog.rs entries
+* One operation may result in many **oplog.rs** entries
 * Any data written in local database will not be replicated.
 
 
 ## Read and Write 
-* rs.slaveOk() -- To commands run from secondary node to tell mongo db to enable read operation 
-
+* rs.slaveOk() -- Commands run from secondary node to tell mongo db to enable read operation 
 
 ## Write Concerns
 ### Write Concerns Level
-Higher the level, higher the durability of the data. Means more nodes have received the write.
-* 0 - Don't wait for acknowledgement
-* 1 (default) - Wait for acknowledgement from the primary only
-* =>2 - Wait for acknowledgement from primary and one or more nodes
-* 'majority' - Wait for acknowledgement  for majority of replica set members
-
+* Higher the level, higher the durability of the data. Means more nodes have received the write.
+	* 0 - Don't wait for acknowledgement
+	* 1 (default) - Wait for acknowledgement from the primary only
+	* =>2 - Wait for acknowledgement from primary and one or more nodes
+	* 'majority' - Wait for acknowledgement from majority of replica set members
 
 ### Write Concerns Options
 * wtimeout: <int> - the time to wait for requested write concern before marking the operation as failed
 * j: <true|false> - requires the node to commmit the write operation to journal before returning an acknowledgement
 
 ### Write Concerns Commands
-
 * In case for below insert operation, we have 3 node replica set. One node is failed. We will have write operation still committed on healthly nodes. Also, unhealthy nodes will receive the new document once it comes back online.
 
 ```
@@ -293,7 +295,6 @@ db.employees.insert(
 ```
 
 ## Read Concerns
-
 ### Read Concerns Level
 * local
 * available (sharded clusters)
@@ -314,7 +315,7 @@ Read Preference lets you route read operation to specific replica set members:
 ## SHARDING
 * Horizontal scaling
 * Shards: store distributed collections
-* Metadata: Information about which data is store in the sharde
+* Metadata: Information about which data is store in the shard
 * Config Servers: Store metadata of each shards
 * Mongos: routes the queries to the correct sharde
 
@@ -329,56 +330,64 @@ Read Preference lets you route read operation to specific replica set members:
 
 ### Setting up Sharded Cluster
 * Configuration server's configuration file will be similar to the configuration file we created for replica set and below extra option:
+```
 sharding:
   clusterRole: configsvr
+```
+
 * Mongos config, it will also be similar but it will not have db file option and also, extra option which contains config server replica set 
+```
 sharding:
   configDB: m103-csrs/192.168.103.100:26001,192.168.103.100:26002,192.168.103.100:26003
-* Also, all the shards node onfiguration needs to be update with below option:
+```
+
+* Also, all the shards node configuration needs to be update with below option:
+```
 sharding:
   clusterRole: shardsvr
+```
 
 * With the new configuration start mongos process
+```
 mongos -f mongos.conf
+```
 
 * connect to this process
-	mongo --port 26000 --username "m103-admin" --password "m103-pass" --authenticationDatabase admin
-*  Mongos commands
+```
+mongo --port 26000 --username "m103-admin" --password "m103-pass" --authenticationDatabase admin
+```
 
+*  Mongos commands
   * sh.status()
   * sh.addShard("m103-repl/192.168.103.100:27012")
 
 * The mongos configuration file doesn't need to have a dbpath.
 * The mongos configuration file needs to specify the config servers.
-* Mongos inherit the users created on configuration server
-* 
-
+* Mongos **inherit the users created on configuration server**
 
 ## Shard Key
 * Shard key determine the distribution of data in a sharded cluster
-* Must use a shard key field which is present in all the documents
+* Must use **a shard key field which is present in all the documents**
 * Shard key field must be indexed
 	* Indexes must exist First before you can selected the indexed fields for your shard key
 * Shard Keys are immutable
 	* You can not change the shard key fields post sharding
-	* You cannot change the values of shard key fields post sharding.
+	* ---You cannot change the values of shard key fields post sharding.---
 * Shard Keys are permanent
 	* You cannot unshard a sharded collection.
 	
-	
 * A database can contain both sharded collections and unsharded collecitons
-
 
 ## Good Sharding Key
 * To provide good write distribution. Shard Key should have
-* High Cardinality (lots of unique possible values)
-* Low Frequency (very little repetition of those unique values)
-* Non-monotonically changing (non-linear change in values)
+	* High Cardinality (lots of unique possible values)
+	* Low Frequency (very little repetition of those unique values)
+	* Non-monotonically changing (non-linear change in values)
 	
 ## How to Shard
-* Use sh.enableSharding("<database>") to enable sharding for a specified database
-* Use db.<collection>.createIndex() to create  the index for your shard key fields
-* Use sh.shardCollection("<database>.<collection>", {shard key}) to shard the collection
+* Use sh.enableSharding("\<database\>") to enable sharding for a specified database
+* Use db.\<collection\>.createIndex() to create  the index for your shard key fields
+* Use sh.shardCollection("\<database\>.\<collection\>", {shard key}) to shard the collection
 
 
 ## Hashed Shard Key
@@ -387,26 +396,27 @@ mongos -f mongos.conf
 
 ## Drawback:
 * Queries on ranges of shard key values are more likely to be scatter-grather
-* Cannot suppport geographically isolacted read operations using zoned sharding
-* Hashed key must be **single non-array field**..that means doesn't support compound index
+* Cannot suppport geographically isolated read operations using zoned sharding
+* Hashed key must be **single non-array field**..that means **doesn't support compound index**
 * Hashed indexes doesn't support fast sorting
 
 
 ### How to create Hashed Shard
-* Use sh.enableSharding("<database>") to enable sharding for a specified database
-* Use db.<collection>.createIndex({"<field>": "hashed"}) to create  the index for your shard key fields
-* Use sh.shardCollection("<database>.<collection>", {"<shard key field>" : "hashed"}) to shard the collection
+* Use sh.enableSharding("\<database\>") to enable sharding for a specified database
+* Use db.\<collection\>.createIndex({"\<field\>": "hashed"}) to create  the index for your shard key fields
+* Use sh.shardCollection("\<database\>.\<collection\>", {"\<shard key field\>" : "hashed"}) to shard the collection
 
 
 ## Chunk 
 * Logical grouping of documents
 * Lower limit (min key) is inclusive and uper limit (max key) is exclusive
-* Default chunk size is 64MB. A chunk can be of size 1MB <= Chunk Size <= 1024MB
+* Default chunk size is **64MB**. A chunk can be of size 1MB \<= Chunk Size \<= 1024MB
 * Chunk size is configurable during runtime
 * To lower the value of chunk size, go to db and fire below command
+```
 db.settings.save({_id: "chunksize", value: 2}) //2 is in MB
-
-* If the frequency of a shardkey is below less, then 1 chunk becomes very large and it is known as Jumbo Chunk
+```
+* If the frequency of a shardkey is less, then 1 chunk becomes very large and it is known as **Jumbo Chunk**
 * A chunk can only live at one designated shard at a time
 
 
